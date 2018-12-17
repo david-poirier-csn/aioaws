@@ -42,7 +42,6 @@ def _create_canonical_path(path):
     if can_path=='':
         can_path='/'
     can_path = _resolve_path(can_path)
-    '''
     while True:
         decoded_can_path = urllib.parse.unquote(can_path)
         if decoded_can_path != can_path:
@@ -50,7 +49,6 @@ def _create_canonical_path(path):
         else:
             break
     can_path = urllib.parse.quote(can_path.encode('utf-8'), safe='/~')
-    '''
     return can_path
 
 
@@ -82,7 +80,7 @@ def _create_canonical_headers(headers):
                     while '  ' in v:
                         v = v.replace('  ', ' ')
                 values.append(v)
-        can_headers += ','.join(sorted(values)) + '\n'
+        can_headers += ','.join(values) + '\n'
     return can_headers
 
 

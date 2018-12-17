@@ -5,39 +5,38 @@ sys.path.append('./aioaws')
 
 import signer
 
-aws4_testsuite_dir = 'tests/aws4_testsuite_1/'
+aws4_testsuite_dir = 'tests/aws4_testsuite_2/'
 
 REGION = 'us-east-1'
-SERVICE = 'host'
+SERVICE = 'service'
 KEY = 'AKIDEXAMPLE'
 SECRET = 'wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY'
-AMZDATE = '20110909T233600Z'
-DATESTAMP = '20110909'
+
 
 # these tests seem broken - 
 # but there's no documentation or reference implementation so who knows
 skipped_tests = [
-        'get-header-value-order',
-        'get-header-value-multiline',
-        'post-vanilla-query-nonunreserved',
-        'post-vanilla-query-space']
+        'post-x-www-form-urlencoded',
+        'post-x-www-form-urlencoded-parameters']
 
 def test_suite():
     tests = _find_tests()
-    for test in tests:
+    for test, test_dir in tests:
         if test in skipped_tests:
             print(f'Skipping test {test}')
         else:
             print(f'Running test {test}')
-            _run_test(test, aws4_testsuite_dir)
+            _run_test(test, test_dir)
 
 
 def _find_tests():
     tests = []
-    for f in os.listdir(aws4_testsuite_dir):
-        test = f.split('.')[0]
-        if test not in tests:
-            tests.append(test)
+    for root, dirs, files in os.walk(aws4_testsuite_dir):
+        for f in files:
+            if f.endswith('.sts'):
+                test = f.split('.')[0]
+                tests.append((test, root))
+                break
     return tests
 
 
@@ -57,13 +56,16 @@ def _run_test(test, test_dir):
     txt_creq = _load_file(f'{test_dir}/{test}.creq')
     assert txt_creq == canonical_request
 
+    amzdate = headers['X-Amz-Date'][0]
+    datestamp = amzdate[:8]
+
     string_to_sign = signer._create_string_to_sign(
-            AMZDATE, DATESTAMP, REGION, SERVICE, canonical_request)
+            amzdate, datestamp, REGION, SERVICE, canonical_request)
     txt_sts = _load_file(f'{test_dir}/{test}.sts')
     assert txt_sts == string_to_sign
 
     authorization_header = signer._create_authorization_header(
-            KEY, SECRET, DATESTAMP, REGION, SERVICE, headers, string_to_sign)
+            KEY, SECRET, datestamp, REGION, SERVICE, headers, string_to_sign)
     txt_authz = _load_file(f'{test_dir}/{test}.authz')
     assert txt_authz == authorization_header
 
