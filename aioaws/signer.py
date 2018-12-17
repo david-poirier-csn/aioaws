@@ -10,10 +10,12 @@ def sign_request(request, region, service, credentials):
     datestamp = t.strftime('%Y%m%d') # Date w/o time, used in credential scope
     request.headers['X-Amz-Date'] = amzdate
 
+    url_parts = urllib.parse.urlsplit(request.url, allow_fragments=False)
+    query = urllib.parse.parse_qs(url_parts.query, keep_blank_values=True)
     canonical_request = _create_canonical_request(
             request.method,
-            urllib.parse.urlsplit(request.url).path,
-            urllib.parse.parse_qs(urllib.parse.urlsplit(request.url).query),
+            url_parts.path,
+            query,
             request.headers,
             request.body)
     string_to_sign = _create_string_to_sign(
@@ -40,7 +42,15 @@ def _create_canonical_path(path):
     if can_path=='':
         can_path='/'
     can_path = _resolve_path(can_path)
+    '''
+    while True:
+        decoded_can_path = urllib.parse.unquote(can_path)
+        if decoded_can_path != can_path:
+            can_path = decoded_can_path
+        else:
+            break
     can_path = urllib.parse.quote(can_path.encode('utf-8'), safe='/~')
+    '''
     return can_path
 
 
@@ -50,25 +60,39 @@ def _create_canonical_query(query):
         for v in sorted(query[k]):
             if can_query != '':
                 can_query += '&'
-            can_query += urllib.parse.quote(k.encode('utf-8'), safe='/~')
-            can_query += '=' + urllib.parse.quote(v.encode('utf-8'), safe='/~')
+            k = urllib.parse.quote(k.encode('utf-8'))
+            v = urllib.parse.quote(v.encode('utf-8'))
+            can_query += k + '=' + v
     return can_query
 
 
 def _create_canonical_headers(headers):
     can_headers = ''
-    for k in sorted(headers.keys()):
-        v = headers[k]
-        if v.startswith('"') and v.endswith('"'):
-            while '  ' in v:
-                v = v.replace('  ', ' ')
-        can_headers += k.lower() + ':' + v + '\n'
+    lower_headers = {}
+    for k in headers.keys():
+        if k not in lower_headers:
+            lower_headers[k.lower()] = []
+        lower_headers[k.lower()].append(headers[k])
+    for k in sorted(lower_headers.keys()):
+        can_headers += k + ':'
+        values = []
+        for vv in sorted(lower_headers[k]):
+            for v in vv:
+                if v.startswith('"') and v.endswith('"'):
+                    while '  ' in v:
+                        v = v.replace('  ', ' ')
+                values.append(v)
+        can_headers += ','.join(sorted(values)) + '\n'
     return can_headers
 
 
 def _create_signed_headers(headers):
     signed_headers = ''
-    for k in sorted(headers.keys()):
+    lower_headers = {}
+    for k in headers.keys():
+        if k.lower() not in lower_headers:
+            lower_headers[k.lower()] = 'x'
+    for k in sorted(lower_headers.keys()):
         if signed_headers != '':
             signed_headers += ';'
         signed_headers += k.lower()
