@@ -4,13 +4,23 @@ import hmac
 import urllib.parse
 
 
-def sign_request(request, region, service, credentials):
-    t = datetime.datetime.utcnow()
-    amzdate = t.strftime('%Y%m%dT%H%M%SZ')
-    datestamp = t.strftime('%Y%m%d') # Date w/o time, used in credential scope
-    request.headers['X-Amz-Date'] = amzdate
+def sign_request(
+        request, region, service, credentials,
+        *, include_security_token_in_signature=True):
+    if 'X-Amz-Date' in request.headers:
+        amzdate = request.headers['X-Amz-Date'][0]
+    else:
+        t = datetime.datetime.utcnow()
+        amzdate = t.strftime('%Y%m%dT%H%M%SZ')
+        request.headers['X-Amz-Date'] = [amzdate]
+    datestamp = amzdate[:8]
 
-    url_parts = urllib.parse.urlsplit(request.url, allow_fragments=False)
+    if credentials.token is not None and \
+            'X-Amz-Security-Token' not in request.headers and \
+            include_security_token_in_signature:
+                request.headers['X-Amz-Security-Token'] = [credentials.token]
+
+    url_parts = urllib.parse.urlsplit('https://' + request.url, allow_fragments=False)
     query = urllib.parse.parse_qs(url_parts.query, keep_blank_values=True)
     canonical_request = _create_canonical_request(
             request.method,
@@ -23,7 +33,11 @@ def sign_request(request, region, service, credentials):
     authorization_header = _create_authorization_header(
             credentials.key, credentials.secret, datestamp, 
             region, service, request.headers, string_to_sign)
-    request.headers['Authorization'] = authorization_header
+    
+    if credentials.token is not None and \
+            'X-Amz-Security-Token' not in request.headers:
+                request.headers['X-Amz-Security-Token'] = [credentials.token]
+    request.headers['Authorization'] = [authorization_header]
     return request
 
 
@@ -41,6 +55,8 @@ def _create_canonical_path(path):
     can_path = path
     if can_path=='':
         can_path='/'
+    while '//' in can_path:
+        can_path = can_path.replace('//', '/')
     can_path = _resolve_path(can_path)
     while True:
         decoded_can_path = urllib.parse.unquote(can_path)
@@ -79,6 +95,11 @@ def _create_canonical_headers(headers):
                 if v.startswith('"') and v.endswith('"'):
                     while '  ' in v:
                         v = v.replace('  ', ' ')
+                elif '\n' in v:
+                    v = v.replace('\n', ' ')
+                    while '  ' in v:
+                        v = v.replace('  ', ' ')
+                    v = v.replace(' ', ',')
                 values.append(v)
         can_headers += ','.join(values) + '\n'
     return can_headers

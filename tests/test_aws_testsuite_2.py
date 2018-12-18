@@ -3,7 +3,7 @@ import sys
 import urllib.parse
 sys.path.append('./aioaws')
 
-import signer
+import credentials, request, signer
 
 aws4_testsuite_dir = 'tests/aws4_testsuite_2/'
 
@@ -11,6 +11,7 @@ REGION = 'us-east-1'
 SERVICE = 'service'
 KEY = 'AKIDEXAMPLE'
 SECRET = 'wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY'
+TOKEN = 'AQoDYXdzEPT//////////wEXAMPLEtc764bNrC9SAPBSM22wDOk4x4HIZ8j4FZTwdQWLWsKWHGBuFqwAeMicRXmxfpSPfIeoIYRqTflfKD8YUuwthAx7mSEI/qkPpKPi/kMcGdQrmGdeehM4IC1NtBmUpp2wUE8phUZampKsburEDy0KPkyQDYwT7WZ0wq5VSXDvp75YU9HFvlRd8Tx6q6fE8YQcHNVXAkiY9q6d+xo0rKwT38xVqr7ZD0u0iPPkUL64lIZbqBAz+scqKmlzm8FDrypNC9Yjc8fPOLn9FX9KSYvKTr4rvx3iSIlTJabIQwj2ICCR/oLxBA=='
 
 
 # these tests seem broken - 
@@ -43,9 +44,7 @@ def _find_tests():
 def _run_test(test, test_dir):
     txt_req = _load_file(f'{test_dir}/{test}.req')
     method, url, version, headers, body = _parse_txt_req(txt_req)
-    while '//' in url:
-        url = url.replace('//', '/')
-    url_parts = urllib.parse.urlsplit(url, allow_fragments=False)
+    url_parts = urllib.parse.urlsplit('https://localhost' + url, allow_fragments=False)
     query = urllib.parse.parse_qs(url_parts.query, keep_blank_values=True)
     canonical_request = signer._create_canonical_request(
             method, 
@@ -69,6 +68,21 @@ def _run_test(test, test_dir):
     txt_authz = _load_file(f'{test_dir}/{test}.authz')
     assert txt_authz == authorization_header
 
+    req = request.Request(method=method, url=url, version=version, headers=headers, body=body) 
+
+    if test.startswith('post-sts-header'):
+        creds = credentials.Credentials(key=KEY, secret=SECRET, token=TOKEN)
+        signed_request = signer.sign_request(
+                req, REGION, SERVICE, creds, 
+                include_security_token_in_signature=test.endswith('before'))
+    else:
+        creds = credentials.Credentials(key=KEY, secret=SECRET)
+        signed_request = signer.sign_request(req, REGION, SERVICE, creds)
+    
+    signed_request_text = signed_request._get_head_text() + signed_request.body
+    txt_sreq = _load_file(f'{test_dir}/{test}.sreq')
+    assert txt_sreq.strip() == signed_request_text.strip()
+
 
 def _parse_txt_req(txt_req):
     lines = txt_req.split('\n')
@@ -90,7 +104,7 @@ def _parse_txt_req(txt_req):
         while i+1 < len(lines):
             next_line = lines[i+1]
             if next_line.startswith(' ') or next_line.startswith('\t'):
-                v += ',' + next_line.strip()
+                v += '\n' + next_line
             else:
                 break
             i += 1
