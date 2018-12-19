@@ -79,9 +79,9 @@ def _run_test(test, test_dir):
         creds = credentials.Credentials(key=KEY, secret=SECRET)
         signed_request = signer.sign_request(req, REGION, SERVICE, creds)
     
-    signed_request_text = signed_request._get_head_text() + signed_request.body
+    signed_request_text = signed_request._get_head_text() + signed_request.body.decode('utf-8')
     txt_sreq = _load_file(f'{test_dir}/{test}.sreq')
-    assert txt_sreq.strip() == signed_request_text.strip()
+    assert txt_sreq.strip() == signed_request_text.replace('\r\n', '\n').strip()
 
 
 def _parse_txt_req(txt_req):
@@ -123,6 +123,7 @@ def _parse_txt_req(txt_req):
             body += '\r\n'
         body += lines[i]
         i += 1
+    body = body.encode('utf-8')
 
     return method, url, version, headers, body
 

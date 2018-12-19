@@ -107,6 +107,7 @@ def _parse_txt_req(txt_req):
             body += '\r\n'
         body += lines[i]
         i += 1
+    body = body.encode('utf-8')
 
     return method, url, version, headers, body
 

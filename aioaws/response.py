@@ -30,6 +30,11 @@ class Response:
             return int(self.headers['Content-Length'])
         return 0
 
+    def transfer_encoding(self):
+        if 'Transfer-Encoding' in self.headers:
+            return self.headers['Transfer-Encoding']
+        return None
+
     def text(self):
         if self.body:
             return self.body.decode('utf-8')

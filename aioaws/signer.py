@@ -27,7 +27,7 @@ def sign_request(
             url_parts.path,
             query,
             request.headers,
-            request.body)
+            request._get_body_bytes())
     string_to_sign = _create_string_to_sign(
             amzdate, datestamp, region, service, canonical_request)
     authorization_header = _create_authorization_header(
@@ -122,9 +122,7 @@ def _create_signed_headers(headers):
 
 def _create_payload_hash(body):
     if body is None:
-        body = ''
-    if isinstance(body, str):
-        body = body.encode('utf-8')
+        body = ''.encode('utf-8')
     payload_hash = hashlib.sha256(body).hexdigest()
     return payload_hash
 
