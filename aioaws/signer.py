@@ -8,19 +8,19 @@ def sign_request(
         request, region, service, credentials,
         *, include_security_token_in_signature=True):
     if 'X-Amz-Date' in request.headers:
-        amzdate = request.headers['X-Amz-Date'][0]
+        amzdate = request.headers['X-Amz-Date']
     else:
         t = datetime.datetime.utcnow()
         amzdate = t.strftime('%Y%m%dT%H%M%SZ')
-        request.headers['X-Amz-Date'] = [amzdate]
+        request.headers['X-Amz-Date'] = amzdate
     datestamp = amzdate[:8]
 
-    if credentials.token is not None and \
+    if credentials.token and \
             'X-Amz-Security-Token' not in request.headers and \
             include_security_token_in_signature:
-                request.headers['X-Amz-Security-Token'] = [credentials.token]
+                request.headers['X-Amz-Security-Token'] = credentials.token
 
-    url_parts = urllib.parse.urlsplit('https://' + request.url, allow_fragments=False)
+    url_parts = urllib.parse.urlsplit('https://localhost' + request.url, allow_fragments=False)
     query = urllib.parse.parse_qs(url_parts.query, keep_blank_values=True)
     canonical_request = _create_canonical_request(
             request.method,
@@ -34,10 +34,10 @@ def sign_request(
             credentials.key, credentials.secret, datestamp, 
             region, service, request.headers, string_to_sign)
     
-    if credentials.token is not None and \
+    if credentials.token and \
             'X-Amz-Security-Token' not in request.headers:
-                request.headers['X-Amz-Security-Token'] = [credentials.token]
-    request.headers['Authorization'] = [authorization_header]
+                request.headers['X-Amz-Security-Token'] = credentials.token
+    request.headers['Authorization'] = authorization_header
     return request
 
 
@@ -83,25 +83,27 @@ def _create_canonical_query(query):
 def _create_canonical_headers(headers):
     can_headers = ''
     lower_headers = {}
+    # force keys to lower-case, put duplicate key values into lists
     for k in headers.keys():
-        if k not in lower_headers:
+        if k.lower() not in lower_headers:
             lower_headers[k.lower()] = []
         lower_headers[k.lower()].append(headers[k])
+    # sort values into concatted comma-separated strings
+    for k in lower_headers.keys():
+        lower_headers[k] = ','.join(sorted(lower_headers[k]))
+    # standardise list values
     for k in sorted(lower_headers.keys()):
-        can_headers += k + ':'
-        values = []
-        for vv in sorted(lower_headers[k]):
-            for v in vv:
-                if v.startswith('"') and v.endswith('"'):
-                    while '  ' in v:
-                        v = v.replace('  ', ' ')
-                elif '\n' in v:
-                    v = v.replace('\n', ' ')
-                    while '  ' in v:
-                        v = v.replace('  ', ' ')
-                    v = v.replace(' ', ',')
-                values.append(v)
-        can_headers += ','.join(values) + '\n'
+        can_headers += f'{k}:'
+        v = lower_headers[k]
+        if v.startswith('"') and v.endswith('"'):
+            while '  ' in v:
+                v = v.replace('  ', ' ')
+        elif '\n' in v:
+            v = v.replace('\n', ' ')
+            while '  ' in v:
+                v = v.replace('  ', ' ')
+            v = v.strip().replace(' ', ',')
+        can_headers += f'{v}\n'
     return can_headers
 
 
@@ -161,7 +163,4 @@ def _create_authorization_header(key, secret, datestamp, region, service, header
     auth_header += 'SignedHeaders=' + _create_signed_headers(headers) + ', '
     auth_header += 'Signature=' + signature
     return auth_header
-
-
-__all__ = ['Signer']
 

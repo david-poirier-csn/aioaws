@@ -55,7 +55,7 @@ def _run_test(test, test_dir):
     txt_creq = _load_file(f'{test_dir}/{test}.creq')
     assert txt_creq == canonical_request
 
-    amzdate = headers['X-Amz-Date'][0]
+    amzdate = headers['X-Amz-Date']
     datestamp = amzdate[:8]
 
     string_to_sign = signer._create_string_to_sign(
@@ -113,6 +113,9 @@ def _parse_txt_req(txt_req):
             headers[k] = []
         headers[k].append(v)
         i += 1
+
+    for k in headers:
+        headers[k] = ','.join(headers[k])
     
     body = ''
     while i < len(lines):

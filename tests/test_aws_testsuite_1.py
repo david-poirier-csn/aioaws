@@ -17,10 +17,10 @@ DATESTAMP = '20110909'
 # these tests seem broken - 
 # but there's no documentation or reference implementation so who knows
 skipped_tests = [
-        'get-header-value-order',
         'get-header-value-multiline',
         'post-vanilla-query-nonunreserved',
         'post-vanilla-query-space']
+
 
 def test_suite():
     tests = _find_tests()
@@ -88,7 +88,7 @@ def _parse_txt_req(txt_req):
         while i+1 < len(lines):
             next_line = lines[i+1]
             if next_line.startswith(' ') or next_line.startswith('\t'):
-                v += ',' + next_line.strip()
+                v += '\n' + next_line
             else:
                 break
             i += 1
@@ -97,7 +97,10 @@ def _parse_txt_req(txt_req):
             headers[k] = []
         headers[k].append(v)
         i += 1
-    
+
+    for k in headers:
+        headers[k] = ','.join(sorted(headers[k]))
+
     body = ''
     while i < len(lines):
         if body != '':

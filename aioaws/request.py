@@ -15,8 +15,8 @@ class Request:
     def _get_head_text(self):
         head = f'{self.method} {self.url} {self.version}\n'
         for k in self.headers:
-            for v in self.headers[k]:
-                head += f'{k}:{v}\n'
+            v = self.headers[k]
+            head += f'{k}:{v}\n'
         head += '\r\n'
         return head
 

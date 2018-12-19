@@ -1,6 +1,6 @@
 import asyncio
 
-from response import Response
+import response
 
 async def request(req):
     reader, writer = await asyncio.open_connection(
@@ -24,7 +24,7 @@ async def request(req):
             break
         resp_header.append(head)
 
-    resp = Response()
+    resp = response.Response()
     resp._parse_status_line(resp_header[0])
     resp._parse_headers(resp_header[1:])
 
