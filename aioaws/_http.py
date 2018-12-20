@@ -31,18 +31,30 @@ async def request(req):
     resp._parse_headers(resp_header[1:])
 
     if resp.content_length() > 0:
-        body = await reader.read(resp.content_length())
-        resp._set_body(body)
+        resp._set_body(await _read_standard_response(
+            reader, resp.content_length()))
     elif resp.transfer_encoding() == 'chunked':
-        body = b''
-        while True:
-            line = await reader.readline()
-            if line == b'':
-                break
-            body += line
-        resp._set_body(body)
+        resp._set_body(await _read_chunked_response(reader))
 
     writer.close()
 
     return resp
+
+
+async def _read_standard_response(reader, content_length):
+    data = await reader.read(content_length)
+    return data
+
+
+async def _read_chunked_response(reader):
+    data = b''
+    while True:
+        line = await reader.readline()
+        content_length = int(line.strip())
+        if content_length == 0:
+            # consume trailing blank line
+            await reader.readline()
+        else:
+            data += await reader.read(content_length)
+    return data
 

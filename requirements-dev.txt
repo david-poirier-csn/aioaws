@@ -1,0 +1,5 @@
+pipdeptree==0.13.1
+pylint==2.2.2
+pytest==4.0.1
+twine==1.12.1
+wheel==0.32.3
