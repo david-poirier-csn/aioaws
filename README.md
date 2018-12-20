@@ -3,7 +3,10 @@
 ### Usage
 
 ```python
-from import client, credentials, request
+import asyncio
+import hashlib
+
+from aioaws import client, credentials, request
 
 req = request.Request(
         method='GET',

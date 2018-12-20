@@ -5,7 +5,7 @@ with open('README.md', 'r') as fh:
 
 setuptools.setup(
         name='aioaws',
-        version='0.1',
+        version='0.1.1',
         author='David Poirier',
         author_email='dpoirier@y7mail.com',
         description='Async Python client for AWS services with no dependencies',
