@@ -37,5 +37,5 @@ def test_rekognition():
             body={'Image': {'Bytes': image}})
     creds = credentials.Credentials()
     resp = asyncio.run(client.request(req, 'us-east-1', 'rekognition', creds))
-    
+
     assert 200 == resp.status_code

@@ -30,6 +30,11 @@ class Response:
             return int(self.headers['Content-Length'])
         return 0
 
+    def content_encoding(self):
+        if 'Content-Encoding' in self.headers:
+            return self.headers['Content-Encoding']
+        return None
+    
     def transfer_encoding(self):
         if 'Transfer-Encoding' in self.headers:
             return self.headers['Transfer-Encoding']

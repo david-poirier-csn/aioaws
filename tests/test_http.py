@@ -9,7 +9,7 @@ def test_example():
             method='GET',
             url='/',
             version='HTTP/1.1',
-            headers={'Host': 'www.example.com'})
+            headers={'Host': 'www.carsales.com.au'})
     resp = asyncio.run(_http.request(req))
 
     assert 200 == resp.status_code
